@@ -23,6 +23,13 @@ summary(test_predict)
 test_predict
 cor(test_set$Temp, test_predict)^2
 
+RSS <- sum((test_set$Temp - test_predict)^2)
+TSS <- sum((test_set$Temp - mean(test_set$Temp))^2)
+rsquared <-1 - (RSS/TSS)
+rsquared
+
+#sum((fitted(test_predict) - test_set$Temp)^2)
+
 #round(cor(training_set), digits = 2) # rounded to 2 decimals
 
 

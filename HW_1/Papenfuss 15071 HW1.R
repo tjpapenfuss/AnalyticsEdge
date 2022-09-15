@@ -29,11 +29,10 @@ confint(regressor_1, level = .99)
 test_predict = predict(regressor, newdata = test_set)
 test_predict_1 = predict(regressor_1, newdata = test_set)
 
-test_predict
 #Obtain the R^2 value of the test data set. 
 SSR_of_model <- sum((test_predict-test_set$Temp)^2)
 SSR_of_model_1 <- sum((test_predict_1-test_set$Temp)^2)
-SSR_of_baseline <- sum((mean(test_set$Temp)-test_set$Temp)^2)
+SSR_of_baseline <- sum((mean(training_set$Temp)-test_set$Temp)^2)
 OSR2 <- 1-SSR_of_model/SSR_of_baseline 
 OSR2
 OSR2_1 <- 1-SSR_of_model_1/SSR_of_baseline 
@@ -53,3 +52,5 @@ RSS <- sum((test_set$Temp - test_predict)^2)
 TSS <- sum((test_set$Temp - mean(test_set$Temp))^2)
 rsquared <-1 - (RSS/TSS)
 rsquared
+
+

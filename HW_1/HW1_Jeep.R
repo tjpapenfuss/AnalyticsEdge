@@ -45,13 +45,16 @@ cor(subset_Data)
 #Plot out the Wrangler queries by month.
 ggplot(dataset, aes(x=Month.Numeric, y=Wrangler.Queries, group=Year)) + geom_line()
 
+#Plot out the Elantra queries by month.
+ggplot(dataset, aes(x=Month.Numeric, y=Elantra.Queries, group=Year)) + geom_line()
+
 #Plot out the Wrangler sales by month.
 ggplot(dataset, aes(x=Month.Numeric, y=Wrangler.Queries, group=Year)) + geom_line()
 
 
 # moving on to question 2 part b. Seasonality
 # ---------------------------------------------------------------------------------- #
-regressor_include_month = lm(formula = Wrangler.Sales ~ Elantra.Sales + Month.Factor +
+regressor_include_month = lm(formula = Wrangler.Sales ~ Year + Elantra.Sales + Month.Factor +
                         Wrangler.Queries + CPI.Energy, data = training_set)
 summary(regressor_include_month)
 summary(regressor_include_month)$r.squared 
@@ -77,7 +80,36 @@ OSR2
 # Building out the linear regression for the Elantra 
 regressor_Elantra = lm(formula = Elantra.Sales ~ Year + Unemployment.Rate + CPI.All +
                  Elantra.Queries + CPI.Energy, data = training_set)
-summary(regressor)
+summary(regressor_Elantra)
+
+#Run the prediction on the test data set
+test_predict = predict(regressor_Elantra, newdata = test_set)
+
+#Obtain the R^2 value of the test data set. 
+SSR_of_model <- sum((test_predict-test_set$Elantra.Sales)^2)
+#SSR_of_model_1 <- sum((test_predict_1-test_set$Elantra.Sales)^2)
+SSR_of_baseline <- sum((mean(training_set$Elantra.Sales)-test_set$Elantra.Sales)^2)
+OSR2 <- 1-(SSR_of_model/SSR_of_baseline )
+OSR2
+
+####
+# Plot and compare the Sales of “Jeep Wrangler” and “Hyundai Elantra” from the time 
+# period January 1, 2010 to December 31, 2018. What do you observe? Do you think that 
+# adding seasonality would improve your model to predict Elantra sales? Why or why not?
+library(ggplot2)
+ggplot() + 
+  geom_line(data=dataset, aes(x=Year,y=Elantra.Sales,col='Elan')) +
+  geom_line(data=dataset, aes(x=Year,y=Wrangler.Sales,col='Wran')) +
+  # theme_bw() +
+  xlab('Year') +
+  ylab('Sales') +
+  scale_color_manual(name="Sales", values = c('Elan'='darkgreen','Wran'='blue'), labels = c('Elan'="Elantra",'Wran'="Wrangler")) +
+  theme(axis.title=element_text(size=14), axis.text=element_text(size=14), legend.text=element_text(size=14), legend.title=element_text(size=14))
+
+#Show graphically the sales per year
+lo <- loess(dataset$Year~dataset$Elantra.Sales)
+plot(dataset$Year, dataset$Elantra.Sales)
+lines(predict(lo), col='red', lwd=2)
 
 
 

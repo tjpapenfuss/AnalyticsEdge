@@ -57,13 +57,15 @@ OSR2
 # plot a scatter plot
 ggplot(data=boston.train,aes(x=dis, y=nox)) +
   geom_point() +
-  stat_smooth(method = "lm", formula = y ~ poly(x, degree=3),se = FALSE)
+  stat_smooth(method = "lm", formula = y ~ poly(x, degree=3),se = FALSE) +
   theme_bw() +
   xlab('DIS') +
   ylab("NOX") +
-  theme(axis.title=element_text(size=18), 
-       axis.text=element_text(size=18), 
-       legend.text=element_text(size=18))
+  ggtitle("Polynomial regression of degree 3") +
+  theme(axis.title=element_text(size=12), 
+       axis.text=element_text(size=12), 
+       legend.text=element_text(size=12),
+       plot.title = element_text(hjust = 0.5))
 
 
 # --------------------------------------------------------------------------------- #

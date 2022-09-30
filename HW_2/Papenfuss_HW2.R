@@ -7,9 +7,14 @@ library(ROCR)
 library(ggplot2)
 library(splines)
 
+# --------------------------------------------------------------------------------- #
+#### Problem 1
+# --------------------------------------------------------------------------------- #
 # Import the dataset
-boston = read.csv('boston.csv')
+###### TRY AND CONVERT nonretail to a factor!!!!!!!
 
+boston = read.csv('boston.csv')
+boston$nonretail = as_factor(boston$nonretail)
 # Split the data set into training and testing data sets
 set.seed(123)
 split = createDataPartition(boston$nox, p = 0.7, list = FALSE) 
@@ -17,7 +22,7 @@ boston.train = boston[split,]
 boston.test = boston[-split,]
 
 head(boston.test)
-
+str(boston.train)
 # --------------------------------------------------------------------------------- #
 #### Problem 1a
 # Run the linear regression. Nox is the dependent var. DIS is the independent
@@ -73,7 +78,7 @@ ggplot(data=boston.train,aes(x=dis, y=nox)) +
 
 
 ## Run regressor with the nonretail factor. This generates really good R^2
-regressor_splines = lm(formula = nox ~ poly(dis,df=3)*factor(nonretail), data = boston.train)
+regressor_splines = lm(formula = nox ~ poly(dis,df=3)*(nonretail), data = boston.train)
 summary(regressor_splines)
 
 #Run the prediction on the test data set
@@ -94,18 +99,32 @@ boston.train_0
 
 #Create two new regressors. These are for nonretail =0 & 1. These regressors will be used
 #below in the ggplot
-regressor_splines_1 = lm(formula = nox ~ poly(dis,df=3), data = boston.train_1)
-regressor_splines_0 = lm(formula = nox ~ poly(dis,df=3), data = boston.train_0)
+# regressor_splines_1 = lm(formula = nox ~ poly(dis,df=3), data = boston.train_1)
+# regressor_splines_0 = lm(formula = nox ~ poly(dis,df=3), data = boston.train_0)
+# 
+# #First plot the old regressor, then plot the two new regressors. 
+# ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
+#   geom_point() +
+#   stat_smooth(method = "lm", formula = y ~ poly(x, degree=3),se = FALSE, 
+#               color = "red") +
+#   geom_smooth(data = boston.train_0,aes(x=dis, y=nox), 
+#               method = "lm", formula = y ~ poly(x, degree=3), se=FALSE) +
+#   geom_smooth(data = boston.train_1,aes(x=dis, y=nox), 
+#               method = "lm", formula = y ~ poly(x, degree=3), se=FALSE, color = "blue") +
+#   theme_bw() +
+#   xlab('DIS') +
+#   ylab("NOX") +
+#   ggtitle("Polynomial regression of degree 3") +
+#   theme(axis.title=element_text(size=12), 
+#         axis.text=element_text(size=12), 
+#         legend.text=element_text(size=12),
+#         plot.title = element_text(hjust = 0.5))
 
-#First plot the old regressor, then plot the two new regressors. 
 ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ poly(x, degree=3),se = FALSE, 
-              color = "red") +
-  geom_smooth(data = boston.train_0,aes(x=dis, y=nox), 
-              method = "lm", formula = y ~ poly(x, degree=3), se=FALSE) +
-  geom_smooth(data = boston.train_1,aes(x=dis, y=nox), 
-              method = "lm", formula = y ~ poly(x, degree=3), se=FALSE, color = "blue") +
+              color = "black") +
+  geom_smooth(method = "lm", formula = y ~ poly(x,df=3), se=FALSE) +
   theme_bw() +
   xlab('DIS') +
   ylab("NOX") +
@@ -115,7 +134,6 @@ ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
         legend.text=element_text(size=12),
         plot.title = element_text(hjust = 0.5))
 
-
 # --------------------------------------------------------------------------------- #
 #### Question 4d
 
@@ -123,11 +141,11 @@ ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
 knots_bos <- quantile(boston.train$dis, p = c(0.2, 0.4, 0.6, 0.8))
 
 regressor_splines_2 = lm(formula = nox ~ bs(dis,knots=c(knots_bos[1], 
-                       knots_bos[2], knots_bos[3], knots_bos[4]))*factor(nonretail),
+                       knots_bos[2], knots_bos[3], knots_bos[4]))*nonretail,
                        data = boston.train)
 summary(regressor_splines_2)
 
-ggplot(data=boston.train,aes(x=dis, y=nox)) +
+ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ bs(x,knots=c(knots_bos[1], 
               knots_bos[2], knots_bos[3], knots_bos[4])),se = FALSE) +
@@ -151,39 +169,133 @@ OSR2
 
 
 
-# ------ The below code for exercise 1d will plot the splines on the data set. 
-#Generate a subset with nonretail = 1
-boston.train_1 = subset(boston.train, boston.train$nonretail == 1)
-boston.train_1
-#Generate a subset with nonretail = 0
-boston.train_0 = subset(boston.train, boston.train$nonretail == 0)
-boston.train_0
+# # ------ The below code for exercise 1d will plot the splines on the data set.
+# #Generate a subset with nonretail = 1
+# boston.train_1 = subset(boston.train, boston.train$nonretail == 1)
+# boston.train_1
+# #Generate a subset with nonretail = 0
+# boston.train_0 = subset(boston.train, boston.train$nonretail == 0)
+# boston.train_0
+# 
+# #Create two new regressors. These are for nonretail =0 & 1. These regressors will be used
+# #below in the ggplot
+# regressor_splines_1 = lm(formula = nox ~ bs(dis,knots=c(knots_bos[1],
+#                          knots_bos[2], knots_bos[3], knots_bos[4])),
+#                          data = boston.train_1)
+# regressor_splines_0 = lm(formula = nox ~ bs(dis,knots=c(knots_bos[1],
+#                          knots_bos[2], knots_bos[3], knots_bos[4])),
+#                          data = boston.train_0)
+# 
+# ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
+#   geom_point() +
+#   geom_smooth(data = boston.train_0,aes(x=dis, y=nox),
+#               method = "lm", formula = y ~ bs(x,knots=c(knots_bos[1],
+#               knots_bos[2], knots_bos[3], knots_bos[4])), se=FALSE) +
+#   geom_smooth(data = boston.train_1,aes(x=dis, y=nox),
+#               method = "lm", formula = y ~ bs(x,knots=c(knots_bos[1],
+#               knots_bos[2], knots_bos[3], knots_bos[4])), se=FALSE, color = "blue") +
+#   theme_bw() +
+#   xlab('DIS') +
+#   ylab("NOX") +
+#   ggtitle("Spline graph Question 1 part d") +
+#   theme(axis.title=element_text(size=12),
+#         axis.text=element_text(size=12),
+#         legend.text=element_text(size=12),
+#         plot.title = element_text(hjust = 0.5))
 
-#Create two new regressors. These are for nonretail =0 & 1. These regressors will be used
-#below in the ggplot
-regressor_splines_1 = lm(formula = nox ~ bs(dis,knots=c(knots_bos[1], 
-                         knots_bos[2], knots_bos[3], knots_bos[4])),
-                         data = boston.train_1)
-regressor_splines_0 = lm(formula = nox ~ bs(dis,knots=c(knots_bos[1], 
-                         knots_bos[2], knots_bos[3], knots_bos[4])),
-                         data = boston.train_0)
+# --------------------------------------------------------------------------------- #
+#### Problem 2
 
-ggplot(data=boston.train,aes(x=dis, y=nox, color=nonretail)) +
+kc_raw = read.csv("kc_house.csv")
+str(kc_raw)
+
+
+
+# --------------------------------------------------------------------------------- #
+#### Problem 2a
+
+# Find the correlation
+corMatrix = cor(kc_raw)
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+  )
+}
+library(Hmisc)
+
+res2<-rcorr(as.matrix(kc_raw))
+matrix = flattenCorrMatrix(res2$r, res2$P)
+
+# Plot based on variables I think are important 
+# Variables: sqft_living, grade, and waterfront
+regressor = lm(formula = price ~., data = kc_raw)
+summary(regressor)
+
+ggplot(data=kc_raw,aes(x=sqft_living, y=price)) +
   geom_point() +
-  geom_smooth(data = boston.train_0,aes(x=dis, y=nox), 
-              method = "lm", formula = y ~ bs(x,knots=c(knots_bos[1], 
-              knots_bos[2], knots_bos[3], knots_bos[4])), se=FALSE) +
-  geom_smooth(data = boston.train_1,aes(x=dis, y=nox), 
-              method = "lm", formula = y ~ bs(x,knots=c(knots_bos[1], 
-              knots_bos[2], knots_bos[3], knots_bos[4])), se=FALSE, color = "blue") +
+  geom_smooth(method = lm, se = FALSE) +
   theme_bw() +
-  xlab('DIS') +
-  ylab("NOX") +
-  ggtitle("Spline graph Question 1 part d") +
+  xlab('sqft') +
+  ylab("price") +
+  ggtitle("price vs. sqft") +
   theme(axis.title=element_text(size=12), 
         axis.text=element_text(size=12), 
         legend.text=element_text(size=12),
         plot.title = element_text(hjust = 0.5))
+
+ggplot(data=kc_raw,aes(x=grade, y=price)) +
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  theme_bw() +
+  xlab('grade') +
+  ylab("price") +
+  ggtitle("price vs. grade") +
+  theme(axis.title=element_text(size=12), 
+        axis.text=element_text(size=12), 
+        legend.text=element_text(size=12),
+        plot.title = element_text(hjust = 0.5))
+
+ggplot(data=kc_raw,aes(x=waterfront, y=price)) +
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE) +
+  theme_bw() +
+  xlab('waterfront') +
+  ylab("price") +
+  ggtitle("price vs. waterfront") +
+  theme(axis.title=element_text(size=12), 
+        axis.text=element_text(size=12), 
+        legend.text=element_text(size=12),
+        plot.title = element_text(hjust = 0.5))
+
+# --------------------------------------------------------------------------------- #
+#### Problem 2b
+
+pp <- preProcess(kc_raw, method=c("center", "scale"))
+kc <- predict(pp, kc_raw)
+set.seed(123)
+train.obs <- sort(sample(seq_len(nrow(kc)), 0.7*nrow(kc))) 
+train <- kc[train.obs,]
+test <- kc[-train.obs,]
+
+regressor = lm(formula = price ~ sqft_living + waterfront + view +
+                 grade + yr_built + lat + long, data = train)
+summary(regressor)
+
+#Run the prediction on the test data set
+prediction = predict(regressor, newdata = test)
+
+#Obtain the R^2 value of the test data set. 
+SSR_of_model <- sum((prediction-test$price)^2)
+SSR_of_baseline <- sum((mean(train$price)-test$price)^2)
+OSR2 <- 1-(SSR_of_model/SSR_of_baseline )
+OSR2
+
+
 
 
 

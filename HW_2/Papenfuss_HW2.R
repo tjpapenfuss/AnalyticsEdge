@@ -220,6 +220,7 @@ OSR2
 
 kc_raw = read.csv("kc_house.csv")
 str(kc_raw)
+kc_raw$waterfront = as_factor(kc_raw$waterfront)
 
 
 
@@ -271,17 +272,13 @@ ggplot(data=kc_raw,aes(x=grade, y=price)) +
         legend.text=element_text(size=12),
         plot.title = element_text(hjust = 0.5))
 
-ggplot(data=kc_raw,aes(x=waterfront, y=price)) +
-  geom_point() +
-  geom_smooth(method = lm, se = FALSE) +
-  theme_bw() +
+ggplot(data=kc_raw,aes(x=waterfront, y=price, color = waterfront)) +
+  geom_boxplot() +
+  #geom_smooth(method = lm, se = FALSE) +
   xlab('waterfront') +
   ylab("price") +
-  ggtitle("price vs. waterfront") +
-  theme(axis.title=element_text(size=12), 
-        axis.text=element_text(size=12), 
-        legend.text=element_text(size=12),
-        plot.title = element_text(hjust = 0.5))
+  ggtitle("price vs. waterfront") 
+
 
 # --------------------------------------------------------------------------------- #
 #### Problem 2b
@@ -348,7 +345,7 @@ coef(ridge.final)
 # ------ LASSO ----------------------------------- 
 ### LASSO
 
-lasso.tr=cv.glmnet(x.train,y.train,alpha=0, nfolds=5)
+lasso.tr=cv.glmnet(x.train,y.train,alpha=1, nfolds=5)
 plot(lasso.tr)
 
 best.lasso.lambda = lasso.tr$lambda.min
@@ -364,7 +361,15 @@ coef(lasso.final)
 
 
 
-
+# END  OF CODE. The code below is all testing. DO NOT USE!!
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------------- #
 
 
 

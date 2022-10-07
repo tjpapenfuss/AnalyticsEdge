@@ -221,6 +221,7 @@ OSR2
 kc_raw = read.csv("kc_house.csv")
 str(kc_raw)
 kc_raw$waterfront = as_factor(kc_raw$waterfront)
+kc_raw$grade = as_factor(kc_raw$grade)
 
 
 
@@ -260,24 +261,24 @@ ggplot(data=kc_raw,aes(x=sqft_living, y=price)) +
         legend.text=element_text(size=12),
         plot.title = element_text(hjust = 0.5))
 
-ggplot(data=kc_raw,aes(x=grade, y=price)) +
-  geom_point() +
-  geom_smooth(method = lm, se = FALSE) +
+library(scales)
+
+ggplot(data=kc_raw,aes(x=grade, y=price, color=grade)) +
+  geom_boxplot() +
+  #geom_smooth(method = lm, se = FALSE) +
   theme_bw() +
   xlab('grade') +
   ylab("price") +
   ggtitle("price vs. grade") +
-  theme(axis.title=element_text(size=12), 
-        axis.text=element_text(size=12), 
-        legend.text=element_text(size=12),
-        plot.title = element_text(hjust = 0.5))
+  scale_y_continuous(labels = dollar)
 
 ggplot(data=kc_raw,aes(x=waterfront, y=price, color = waterfront)) +
   geom_boxplot() +
   #geom_smooth(method = lm, se = FALSE) +
   xlab('waterfront') +
   ylab("price") +
-  ggtitle("price vs. waterfront") 
+  ggtitle("price vs. waterfront") +
+  scale_y_continuous(labels = dollar)
 
 
 # --------------------------------------------------------------------------------- #

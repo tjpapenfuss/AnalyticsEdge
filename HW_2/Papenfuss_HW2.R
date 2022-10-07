@@ -6,6 +6,18 @@ library(caret)
 library(ROCR)
 library(ggplot2)
 library(splines)
+library(ISLR)
+library(caret)
+library(leaps)
+library(gridExtra)
+library(dplyr)
+library(tidyr)
+library(lars)
+library(gbm)
+library(glmnet)
+library(ggcorrplot)
+library(Hmisc)
+
 
 # --------------------------------------------------------------------------------- #
 #### Problem 1
@@ -226,7 +238,6 @@ flattenCorrMatrix <- function(cormat, pmat) {
     p = pmat[ut]
   )
 }
-library(Hmisc)
 
 res2<-rcorr(as.matrix(kc_raw))
 matrix = flattenCorrMatrix(res2$r, res2$P)
@@ -295,7 +306,201 @@ SSR_of_baseline <- sum((mean(train$price)-test$price)^2)
 OSR2 <- 1-(SSR_of_model/SSR_of_baseline )
 OSR2
 
+# --------------------------------------------------------------------------------- #
+#### Problem 2c
 
+### Ridge regression
+
+# Preparation of the train and test matrices
+x.train=model.matrix(price~.,data=train)
+y.train=train$price
+x.test=model.matrix(price~.,data=test) 
+y.test=test$price
+
+# TA work
+# Alpha is the control for whether you use ridge or LASSO
+# No need to worry about the lamda parameter
+#
+
+# Run Ridge Regression on the train Set
+# The first is to find the right Lambda. 
+#lambdas.ridge <- c(exp(seq(15, -10, -.1)))
+# N.lambda.ridge <- length(lambdas.ridge)
+ridge.tr=cv.glmnet(x.train,y.train,alpha=0, nfolds=5)
+plot(ridge.tr)
+
+best.ridge.lambda = ridge.tr$lambda.min
+
+# ridge.new=glmnet(x=x.full,y=y.full,alpha=0,lambda = min_lambda)
+# predict(ridge.new,type="coef")
+# summary(ridge.new)
+
+# THIS IS WHAT I NEED TO DO NEXT
+# In sample and out of sample performance
+ridge.final <- glmnet(x.train,y.train,alpha=0,lambda=best.ridge.lambda)
+pred.train.final <- predict(ridge.final,x.train)
+R2.ridge.final <- 1-sum((pred.train.final-train$price)^2)/sum((mean(train$price)-train$price)^2)
+pred.test.final <- predict(ridge.final,x.test)
+OSR2.ridge.final <- 1-sum((pred.test.final-test$price)^2)/sum((mean(train$price)-test$price)^2)
+#R2 = 0.688; OSR2 =  0.692
+coef(ridge.final)
+
+# ------ LASSO ----------------------------------- 
+### LASSO
+
+lasso.tr=cv.glmnet(x.train,y.train,alpha=0, nfolds=5)
+plot(lasso.tr)
+
+best.lasso.lambda = lasso.tr$lambda.min
+
+# In sample and out of sample performance
+lasso.final <- glmnet(x.train,y.train,alpha=1,lambda=best.lasso.lambda)
+pred.train.final <- predict(lasso.final,x.train)
+R2.lasso.final <- 1-sum((pred.train.final-train$price)^2)/sum((mean(train$price)-train$price)^2)
+pred.test.final <- predict(lasso.final,x.test)
+OSR2.lasso.final <- 1-sum((pred.test.final-test$price)^2)/sum((mean(train$price)-test$price)^2)
+#R2 = 0.688; OSR2 =  0.692
+coef(lasso.final)
+
+
+
+
+
+
+
+
+
+# Derive ridge path
+# ridge_coef <- c()
+
+# k <- ncol(kc_raw)-1
+# k = 5
+# for (j in 1:k){
+#   ridge_coef <- c(ridge_coef,ridge.tr$beta[j,])
+# }
+# ridge <- data.frame(lambda=rep(ridge.tr$lambda,k),coefficients=ridge_coef,var=as.factor(sort(rep(1:k,length(ridge.tr$lambda)))))
+
+# Plot ridge path
+#pdf('ridge_path.pdf',12,6)
+# ggplot(ridge %>% filter(log(lambda)>=-5) %>% filter(log(lambda)<=10),aes(x=log(lambda),y=coefficients,group=var,color=var)) +
+#   geom_line() + 
+#   theme_bw() +
+#   ylim(-0.2,0.5)+
+#   xlab(expression(paste("log(",lambda,")"))) +
+#   ylab("Coefficients") +
+#   theme(axis.title=element_text(size=18), axis.text=element_text(size=18), legend.position='none')
+# #dev.off()
+
+# Prediction on the train and test sets
+ridge.pred.test=predict(ridge.tr,x.test)
+ridge.pred.train=predict(ridge.tr,x.train)
+
+# Performance assessment on the train and test sets
+N.lambda <- ncol(ridge.pred.test)
+ridge.R2.train <- c()
+ridge.R2.test <- c()
+for (i in 1:N.lambda){
+  ridge.R2.train[i] <- 1-sum((ridge.pred.train[,i]-train$price)^2)/sum((mean(train$price)-train$price)^2)
+  ridge.R2.test[i] <- 1-sum((ridge.pred.test[,i]-test$price)^2)/sum((mean(train$price)-test$price)^2)
+}
+
+# Plot of in-sample and out-of-sample performance assessment
+R2.ridge <- data.frame(lambda=ridge.tr$lambda,R2=ridge.R2.train,OSR2=ridge.R2.test)
+# setwd('./../plots')
+# pdf('ridge_R2.pdf',8,6)
+ggplot() +
+  geom_line(data=R2.ridge %>% filter(log(lambda)>=-5) %>% filter(log(lambda)<=10),aes(x=log(lambda),y=R2,colour="1"),lwd=2) + 
+  geom_line(data=R2.ridge %>% filter(log(lambda)>=-5) %>% filter(log(lambda)<=10),aes(x=log(lambda),y=OSR2,colour="2"),lwd=2) + 
+  theme_bw() +
+  ylim(0,1)+
+  xlab(expression(paste("log(",lambda,")"))) +
+  ylab("R2") +
+  theme(axis.title=element_text(size=18), axis.text=element_text(size=18), legend.text=element_text(size=18)) +
+  scale_color_discrete(name='',labels=c('Train','Test'))
+#dev.off()
+
+# Best lambda
+best.ridge.lambda <- R2.ridge$lambda[which.max(R2.ridge$OSR2)]
+
+# In sample and out of sample performance
+ridge.final <- glmnet(x.train,y.train,alpha=0,lambda=best.ridge.lambda)
+pred.train.final <- predict(ridge.final,x.train)
+R2.ridge.final <- 1-sum((pred.train.final-train$price)^2)/sum((mean(train$price)-train$price)^2)
+pred.test.final <- predict(ridge.final,x.test)
+OSR2.ridge.final <- 1-sum((pred.test.final-test$price)^2)/sum((mean(train$price)-test$price)^2)
+
+# ------ LASSO ----------------------------------- 
+### LASSO
+
+# Run LASSO on the train Set
+lambdas.lasso <- c(exp(seq(10, -4, -.1)),0)
+N.lambda.lasso <- length(lambdas.lasso)
+lasso.tr=glmnet(x.train,y.train,alpha=1,lambda=lambdas.lasso)
+
+# Obtain LASSO path
+lasso_coef <- c()
+for (j in 1:k){
+  lasso_coef <- c(lasso_coef,lasso.tr$beta[j,])
+}
+lasso <- data.frame(lambda=rep(lasso.tr$lambda,k),coefficients=lasso_coef,var=as.factor(sort(rep(1:k,length(lasso.tr$lambda)))))
+
+# Plot LASSO path
+#setwd('./../plots')
+#pdf('lasso_path.pdf',12,6)
+ggplot(lasso %>% filter(log(lambda)>=-2) %>% filter(log(lambda)<=6),aes(x=log(lambda),y=coefficients,group=var,color=var)) +
+  geom_line() + 
+  theme_bw() +
+  ylim(-1,1)+
+  xlab(expression(paste("log(",lambda,")"))) +
+  ylab("Coefficients") +
+  theme(axis.title=element_text(size=18), axis.text=element_text(size=18), legend.position='none')
+#dev.off()
+
+# Prediction on the train and test sets
+lasso.pred.test=predict(lasso.tr,x.test)
+lasso.pred.train=predict(lasso.tr,x.train)
+
+# Performance assessment on the train and test sets
+N.lambda <- ncol(lasso.pred.test)
+lasso.R2.train <- c()
+lasso.R2.test <- c()
+for (i in 1:N.lambda){
+  lasso.R2.train[i] <- 1-sum((lasso.pred.train[,i]-train$price)^2)/sum((mean(train$price)-train$price)^2)
+  lasso.R2.test[i] <- 1-sum((lasso.pred.test[,i]-test$price)^2)/sum((mean(train$price)-test$price)^2)
+}
+
+# Plot of in-sample and out-of-sample performance assessment
+R2.lasso <- data.frame(lambda=lasso.tr$lambda,R2=lasso.R2.train,OSR2=lasso.R2.test)
+#setwd('./../plots')
+#pdf('lasso_R2.pdf',8,6)
+ggplot() +
+  geom_line(data=R2.lasso %>% filter(log(lambda)>=-2) %>% filter(log(lambda)<=6),aes(x=log(lambda),y=R2,colour="1"),lwd=2) + 
+  geom_line(data=R2.lasso %>% filter(log(lambda)>=-2) %>% filter(log(lambda)<=6),aes(x=log(lambda),y=OSR2,colour="2"),lwd=2) + 
+  theme_bw() +
+  ylim(0,1)+
+  xlab(expression(paste("log(",lambda,")"))) +
+  ylab("R2") +
+  theme(axis.title=element_text(size=18), axis.text=element_text(size=18), legend.text=element_text(size=18)) +
+  scale_color_discrete(name='',labels=c('Train','Test'))
+dev.off()
+
+# Best lambda
+best.lasso.lambda <- R2.lasso$lambda[which.max(R2.lasso$OSR2)]
+
+# In sample and out of sample performance
+lasso.final <- glmnet(x.train,y.train,alpha=1,lambda=best.lasso.lambda)
+pred.train.final <- predict(lasso.final,x.train)
+R2.lasso.final <- 1-sum((pred.train.final-train$price)^2)/sum((mean(train$price)-train$price)^2)
+pred.test.final <- predict(lasso.final,x.test)
+OSR2.lasso.final <- 1-sum((pred.test.final-test$price)^2)/sum((mean(train$price)-test$price)^2)
+
+### Summary of all methods
+
+summary <- data.frame(
+  R2=c(R2.full,R2.restricted,R2.forward.subset.final,R2.backward.subset.final,R2.ridge.final,R2.lasso.final),
+  OSR2=c(OSR2.full,OSR2.restricted,OSR2.forward.subset.final,OSR2.backward.subset.final,OSR2.ridge.final,OSR2.lasso.final)
+)
+ # ------------------ End of LASSO ----------------------------------- 
 
 
 

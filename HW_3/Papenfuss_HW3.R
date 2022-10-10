@@ -132,10 +132,28 @@ dplyr::count(train, TenYearCHD)
 #### Problem 2h
 
 
-
+library(pROC)
 roc_score=roc(train$TenYearCHD, predicted) #AUC score
 plot(roc_score ,main ="ROC curve -- Logistic Regression ")
 roc_score
+
+# --------------------------------------------------------------------------------- #
+#### Problem 2i
+# Testing with a model that has only three risk factors.
+
+library(caret)
+library(InformationValue)
+library(ISLR)
+model_train_three <- glm(TenYearCHD ~age+male+sysBP,family=binomial, train)
+summary(model_train_three)
+predicted = predict(model_train_three, data = train, type="response")
+optimal = 0.08
+predicted <- ifelse(predicted>=optimal, 1, 0)
+predicted
+train$TenYearCHD
+confusionMatrix(train$TenYearCHD, as.factor(predicted))
+summarise(train)
+
 
 
 

@@ -86,7 +86,7 @@ ggplot(data=boston.train,aes(x=dis, y=nox)) +
 
 
 # --------------------------------------------------------------------------------- #
-#### Question 4c
+#### Question 1c
 
 
 ## Run regressor with the nonretail factor. This generates really good R^2

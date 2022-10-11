@@ -112,18 +112,26 @@ library(InformationValue)
 library(ISLR)
 model_train <- glm(TenYearCHD ~.,family=binomial, train)
 summary(model_train)
-predicted = predict(model_train, data = train, type="response")
+predicted = predict(model_train, newdata = test, type="response")
 optimal = 0.08
 predicted <- ifelse(predicted>=optimal, 1, 0)
 predicted
-train$TenYearCHD
-confusionMatrix(train$TenYearCHD, as.factor(predicted))
-summarise(train)
-
+test$TenYearCHD
+confusionMatrix(test$TenYearCHD, predicted)
+summarise(test)
+table(test, predicted)
 # just some extra testing to see a count of all people that get CHD.
 library("dplyr")   
-dplyr::count(train, TenYearCHD)
+dplyr::count(test, TenYearCHD)
 
+#calculate TPR
+sensitivity(test$TenYearCHD, predicted)
+
+#calculate TNR
+specificity(test$TenYearCHD, predicted)
+
+#calculate total misclassification error rate
+misClassError(test$TenYearCHD, predicted, threshold=optimal)
 
 
 
@@ -133,7 +141,7 @@ dplyr::count(train, TenYearCHD)
 
 
 library(pROC)
-roc_score=roc(train$TenYearCHD, predicted) #AUC score
+roc_score=roc(test$TenYearCHD, predicted) #AUC score
 plot(roc_score ,main ="ROC curve -- Logistic Regression ")
 roc_score
 
@@ -146,12 +154,12 @@ library(InformationValue)
 library(ISLR)
 model_train_three <- glm(TenYearCHD ~age+male+sysBP,family=binomial, train)
 summary(model_train_three)
-predicted = predict(model_train_three, data = train, type="response")
+predicted = predict(model_train_three, newdata = test, type="response")
 optimal = 0.08
 predicted <- ifelse(predicted>=optimal, 1, 0)
 predicted
 train$TenYearCHD
-confusionMatrix(train$TenYearCHD, as.factor(predicted))
+confusionMatrix(test$TenYearCHD, (predicted))
 summarise(train)
 
 

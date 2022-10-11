@@ -119,7 +119,6 @@ predicted
 test$TenYearCHD
 confusionMatrix(test$TenYearCHD, predicted)
 summarise(test)
-table(test, predicted)
 # just some extra testing to see a count of all people that get CHD.
 library("dplyr")   
 dplyr::count(test, TenYearCHD)

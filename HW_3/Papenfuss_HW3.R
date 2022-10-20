@@ -46,6 +46,11 @@ regressor = lm(formula = Survived ~ Pclass + Sex + SibSp, data = titanic.train)
 summary(regressor)
 
 
+coef = model$coefficients[2]     # coefficient of tenure
+# Exponentiate it:
+coef
+exp(coef)
+exp(0.96)
 
 # --------------------------------------------------------------------------------- #
 #### Problem 2
@@ -95,15 +100,22 @@ predict(model, newdata = newdata_patient0, type = "response")
 
 # --------------------------------------------------------------------------------- #
 #### Problem 2d
+# WE CAN USE RANGE to find the range of the variable. 
 # predict based on a real life example
 # newdata = read.csv("~/AnalyticsEdge/AnalyticsEdge/HW_3/ex_2c.csv") 
-newdata_patient0_updates = with(data, data.frame(male = factor(1),age = 55,education = "College",currentSmoker=factor(0),
+body_mass_arr = array(1:11)
+body_mass = 20
+while(body_mass < 30) {
+  newdata_patient0_updates = with(data, data.frame(male = factor(1),age = 55,education = "College",currentSmoker=factor(0),
                                          cigsPerDay=0,BPMeds=factor(0),prevalentStroke=factor(0),
                                          prevalentHyp=factor(0),diabetes=factor(0),totChol=180,sysBP=115,
-                                         diaBP=100,BMI=20,heartRate=60,glucose=80))
-# Set your additional factor variables.
-predict(model, newdata = newdata_patient0_updates, type = "response")
-
+                                         diaBP=100,BMI=body_mass,heartRate=60,glucose=80))
+  # Set your additional factor variables.
+  body_mass_arr[body_mass-19] = predict(model, newdata = newdata_patient0_updates, type = "response")
+  body_mass = body_mass+1
+  body_mass
+}
+body_mass_arr
 
 # --------------------------------------------------------------------------------- #
 #### Problem 2f

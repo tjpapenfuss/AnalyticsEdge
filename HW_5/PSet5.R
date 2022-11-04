@@ -1,255 +1,43 @@
+# ----------------------------------------------------------------------------------------
+##### Problem 1:
+# ----------------------------------------------------------------------------------------
 library(caret)
 library(rpart)
 library(rpart.plot) 
 library(caTools)
 library(dplyr)
 library(randomForest)
+library(gdata)
+library(ggplot2)
+library(tidyr)
 
-##### Problem 1: Preventing Hospital Readmissions
-readmission = read.csv("readmission.csv")
-set.seed(144)
-split = createDataPartition(readmission$readmission, p = 0.75, list = FALSE) 
-readm.train <- readmission[split,]
-readm.test <- readmission[-split,]
-head(readm.train)
+# Part (a) code block
+# ----------------------------------------------------------------------------------------
+data = read.csv("returns.csv")
 
-### Question a.
-ggplot(readm.train, aes(x = insulin, y = readmission, group=insulin)) + 
-  geom_point() + geom_count(method = "lm", se = FALSE) + 
-  ggtitle("Age vs. Readmission") + xlab("Age") + ylab("Readmission")
+# Get a subset of the returns data set. This subset includes the Industry (2)
+# and the returns from 01/2008 -> 12/2010.
+returns = data[c(2,25:60)]
 
-regressor = lm(readmission ~ ., data = readm.train)
-summary(regressor)
+agg_data  = aggregate(. ~ Industry, returns, mean)
 
-# table(readmission$readmission)
+agg_data %>% 
+  gather(var, val , -Industry) %>% 
+  ggplot(aes(x = var, y = val, color = as.factor(Industry), group = as.factor(Industry)))+
+  geom_point() + scale_x_discrete(guide = guide_axis(n.dodge = 4))
 
-### Question b. See word document for calculations. 
-loss.matrix = matrix(0,2,2)
-# Then we can specify the two non-zero entries:
-loss.matrix[2,1] = 7550
-loss.matrix[1,2] = 1200
-# We can take a look at the final table:
-loss.matrix 
+ggsave("Industry_returns.pdf")
 
-### Question c.
-# Fitting the CART model
-tree <- rpart(readmission~., parms=list(loss=loss.matrix), data = readm.train, method="class", cp=0.001)
-
-# Plotting the CART tree
-pdf('readmission_tree.pdf',12,6)
-prp(tree, varlen=0,faclen=0,digits=3)
-dev.off()
-
-### Question d.
-pred <- predict(tree, newdata=readm.test, type="class")
-
-confusion.matrix = table(readm.test$readmission, pred)
-confusion.matrix
-
-TPR <- confusion.matrix[2,2]/sum(confusion.matrix[2,])
-TPR
-
-FPR <- confusion.matrix[1,2]/sum(confusion.matrix[1,])
-FPR
-
-### Question e.
-
-totalCostNoHelp = 35000*2741
-#Below is how you get the rate in which you break even. 
-((35000*2741)-(35000*1796)-((35000)*(1-rate)*945))/(4056+945)
-
-(1200*4056)
-#This is the rate at which you break even. 
-rate = 0.25
-rate_value = c()
-totalcost = c()
-rates = c()
-i = 0
-
-for( i in seq(0, 3000, by = 100)){
-  newRate = (35000*1796)+((i)*4056)+(35000*(1-rate)*945)+((i)*945)
-  rate_value = c(rate_value, newRate)
-  rates = c(rates, i)
-  totalcost = c(totalcost, totalCostNoHelp)
-  newRate
-}
-rate_value
-# rates
-ggplot(data.frame(rates, rate_value), aes(x = rates, y = rate_value)) +
-  ggtitle("Cost of intervention vs. Total Cost") + xlab("Cost of Intervention") + ylab("Total Cost") + 
-  geom_line() + geom_line(aes(x = rates, y = totalcost), col="red")
-
-#Below is the formula seen above. This gives you the value at a certain rate.
-(35000*1796)+(1200*4056)+(36200*(1-rate)*945)+(1200*(rate)*945)
+# Generate an aggregate for the each industry for Sept 2008.
+aggregate(data$avg200809 ~ data$Industry, data=data, mean)
 
 # ----------------------------------------------------------------------------------------
-## BELOW IS TESTING I DID FOR E --------------------------------------------------------
+#Part (b)
 # ----------------------------------------------------------------------------------------
 
 
-totalCostNoHelp = 35000*2741
-#Below is how you get the rate in which you break even. 
-(36200-((35000*2741)-(35000*1796)-(1200*4056))/945)/35000
-
-#This is the rate at which you break even. 
-rate = 0.18144
-rate_value = c()
-totalcost = c()
-rates = c()
-i = 0
-
-for( i in seq(0, 1, by = 0.02)){
-  newRate = (35000*1796)+(1200*4056)+(36200*(1-i)*945)+(1200*(i)*945)
-  rate_value = c(rate_value, newRate)
-  rates = c(rates, i)
-  totalcost = c(totalcost, totalCostNoHelp)
-  newRate
-}
-# rate_value
-# rates
-ggplot(data.frame(rates, rate_value), aes(x = rates, y = rate_value)) +
-  ggtitle("Rate vs. Cost") + xlab("Rate") + ylab("Cost") + geom_line()+
-  geom_line(aes(x = rates, y = totalcost), col="red")
-
-#Below is the formula seen above. This gives you the value at a certain rate.
-(35000*1796)+(1200*4056)+(36200*(1-rate)*945)+(1200*(rate)*945)
-
 # ----------------------------------------------------------------------------------------
-# END OF TESTING
-# ----------------------------------------------------------------------------------------
-
-### Question f.
-
-##### Problem 2: Housing Prices in Ames, Iowa, Revisited
-### This problem should be relatively straightforward, and serves mostly as a review.
-ames = read.csv("ames.csv")
-set.seed(15071)
-split = createDataPartition(ames$SalePrice, p = 0.7, list = FALSE) 
-ames.train = ames[split,]
-ames.test = ames[-split,]
-head(ames.train)
-
-ames.mm.allData <- as.data.frame(model.matrix(SalePrice~., data = ames))  
-ames.test.mm = ames.mm.allData[-split,]
-ames.train.mm = ames.mm.allData[split,]
-
-SSTTrain = sum((ames.train$SalePrice - mean(ames.train$SalePrice))^2)
-SSTTest = sum((ames.test$SalePrice - mean(ames.train$SalePrice))^2)
-
-### Question a.
-regressor = lm(SalePrice ~ ., data = ames.train)
-summary(regressor)
-plot(regressor)
-
-reg.test.pred = predict(regressor, newdata = ames.test)
-reg.train.pred = predict(regressor, newdata = ames.train)
-
-
-reg.SSETrain = sum((reg.train.pred - ames.train$SalePrice)^2)
-reg.R2 <- 1 - reg.SSETrain/SSTTrain
-
-reg.SSETest = sum((reg.test.pred - ames.test$SalePrice)^2)
-reg.OSR2 <- 1 - reg.SSETest/SSTTest
-
-### Question b.
-
-cv.trees.cart = train(SalePrice ~ ., method = "rpart", data = ames.train,
-                 trControl = trainControl(method = "cv", number = 10), 
-                 tuneGrid = data.frame(.cp = seq(.00002,.002,.00002)))
-pdf('CART.pdf',12,12)
-prp(cv.trees.cart$finalModel,varlen=0,faclen=0,digits=3) 
-dev.off()
-cv.trees.cart
-
-#Plot results of the CART tree. 
-plot(cv.trees.cart$results$cp, cv.trees.cart$results$Rsquared, type = "l", ylab = "RSQ", xlab = "cp") 
-
-#Select the best CART tree from the CV above. 
-best.tree.cart <- cv.trees.cart$finalModel
-cv.trees.cart$results$Rsquared 
-
-# Run the cart tree prediction on the test and training data sets. 
-cart.test.pred = predict(best.tree.cart, newdata = ames.test.mm)
-cart.train.pred = predict(best.tree.cart, newdata = ames.train.mm)
-
-# Below calculates the R2 value for both training and test data sets. I am using the 
-# SSTTrain that was calcualated above. 
-cart.SSETrain = sum((cart.train.pred - ames.train$SalePrice)^2)
-R2_CART_treeFinal <- 1 - cart.SSETrain/SSTTrain
-
-cart.SSETest = sum((cart.test.pred - ames.test$SalePrice)^2)
-OSR2_CART_treeFinal <- 1 - cart.SSETest/SSTTest
-
-
-### Question c.
-
-rf.mtry = train(SalePrice~., data = ames.train, method="rf", ntree=80, nodesize=25,
-              trControl=trainControl(method="cv", number=5),
-              tuneGrid=data.frame(mtry=seq(2,30,2)))
-#best.rf = rf.cv$finalModel
-#rf.cv
-plot(rf.mtry$results$mtry, rf.cv$results$Rsquared, type = "l", ylab = "RSQ", xlab = "MTRY") # line plot
-best.rf = rf.mtry$finalModel
-importance(best.rf)
-
-rf.mod.mtry = rf.mtry$finalModel
-rf.mod.mtry
-# Finally, we can make predictions
-rf.pred.train = predict(rf.mod.mtry, newdata=ames.train.mm)
-rf.pred.test = predict(rf.mod.mtry, newdata=ames.test.mm)
-
-rf.SSETrain = sum((rf.pred.train - ames.train$SalePrice)^2)
-R2_RF_treeFinal <- 1 - rf.SSETrain/SSTTrain
-
-rf.SSETest = sum((rf.pred.test - ames.test$SalePrice)^2)
-OSR2_RF_treeFinal <- 1 - rf.SSETest/SSTTest
-
-### Question d.
-
-lin.reg.R2.train <- reg.R2
-lin.reg.MAE.train <- MAE(reg.train.pred, ames.train$SalePrice)
-lin.reg.RMSE.train <- RMSE(reg.train.pred, ames.train$SalePrice)
-
-lin.reg.R2.test <- reg.OSR2
-lin.reg.MAE.test <- MAE(reg.test.pred, ames.test$SalePrice)
-lin.reg.RMSE.test <- RMSE(reg.test.pred, ames.test$SalePrice)
-
-CART.R2.train <- R2_CART_treeFinal
-CART.MAE.train <- MAE(cart.train.pred, ames.train$SalePrice)
-CART.RMSE.train <- RMSE(cart.train.pred, ames.train$SalePrice)
-
-CART.R2.test <- OSR2_CART_treeFinal
-CART.MAE.test <- MAE(cart.test.pred, ames.test$SalePrice)
-CART.RMSE.test <- RMSE(cart.test.pred, ames.test$SalePrice)
-
-RF.R2.train <- R2_RF_treeFinal
-RF.MAE.train <- MAE(rf.pred.train, ames.train$SalePrice)
-RF.RMSE.train <- RMSE(rf.pred.train, ames.train$SalePrice)
-
-RF.R2.test <- OSR2_RF_treeFinal
-RF.MAE.test <- MAE(rf.pred.test, ames.test$SalePrice)
-RF.RMSE.test <- RMSE(rf.pred.test, ames.test$SalePrice)
-
-# Summary
-summary_statistics <- data.frame(
-  IS.R2 = c(lin.reg.R2.train,CART.R2.train,RF.R2.train),
-  IS.MAE = c(lin.reg.MAE.train,CART.MAE.train,RF.MAE.train),
-  IS.RMSE = c(lin.reg.RMSE.train,CART.RMSE.train,RF.RMSE.train),
-  OOS.R2 = c(lin.reg.R2.test,CART.R2.test,RF.R2.test),
-  OOS.MAE = c(lin.reg.MAE.test,CART.MAE.test,RF.MAE.test),
-  OOS.RMSE = c(lin.reg.RMSE.test,CART.RMSE.test,RF.RMSE.test)
-)
-
-### Question e.
-
-### Question f.
-
-# ----------------------------------------------------------------------------------------
-# END OF Problem 2
-# ----------------------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------------------
-##### Problem 3: eBay.com
+##### Problem 2: eBay.com
 # ----------------------------------------------------------------------------------------
 library(caret)
 library(rpart)
@@ -294,7 +82,7 @@ ggplot(aes(x=category.factor, y = ..count..), data = ebay.train) +
 ## adaboost
 library(adabag)
 adaboost <- boosting(Competitive.~sellerRating+currency.factor+duration.factor+
-                      endDay.factor+category.factor+ClosePrice+OpenPrice, data = ebay.train)
+                       endDay.factor+category.factor+ClosePrice+OpenPrice, data = ebay.train)
 # variable importance
 importanceplot(adaboost, cex.names=0.7)
 
@@ -332,7 +120,7 @@ pred_test$confusion
 ## xgboost
 library(xgboost)
 xgb <- xgboost(data = model.matrix(Competitive.~ .-1,
-                                     subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.))), label = ebay.train$Competitive., max.depth = 20, eta = 1, nthread = 2, nrounds = 50, objective = "binary:logistic", verbose = 0)
+                                   subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.))), label = ebay.train$Competitive., max.depth = 20, eta = 1, nthread = 2, nrounds = 50, objective = "binary:logistic", verbose = 0)
 # variable importance
 xgb.importance(colnames(model.matrix(Competitive.~ .-1, subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.)))), model = xgb)
 # training
@@ -342,7 +130,7 @@ confusionMatrix(factor(1*(predict(xgb, model.matrix(Competitive.~ .-1, subset(eb
 
 ## bagging
 bag <- bagging(competitive.factor~sellerRating+currency.factor+duration.factor+
-              endDay.factor+category.factor+ClosePrice+OpenPrice, data = ebay.train)
+                 endDay.factor+category.factor+ClosePrice+OpenPrice, data = ebay.train)
 # variable importance
 importanceplot(bag, cex.names=0.7)
 # training
@@ -398,7 +186,7 @@ ada_pred_test$confusion
 
 ## xgboost
 xgb <- xgboost(data = model.matrix(Competitive.~sellerRating+currency.factor+duration.factor+
-                                   endDay.factor+category.factor+OpenPrice,
+                                     endDay.factor+category.factor+OpenPrice,
                                    subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.))), label = ebay.train$Competitive., max.depth = 20, eta = 1, nthread = 2, nrounds = 50, objective = "binary:logistic", verbose = 0)
 # variable importance
 xgb.importance(colnames(model.matrix(Competitive.~ sellerRating+currency.factor+duration.factor+

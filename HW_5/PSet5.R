@@ -18,6 +18,7 @@ data = read.csv("returns.csv")
 # Get a subset of the returns data set. This subset includes the Industry (2)
 # and the returns from 01/2008 -> 12/2010.
 returns = data[c(2,25:60)]
+full_returns = data[,3:122]
 
 agg_data  = aggregate(. ~ Industry, returns, mean)
 
@@ -32,9 +33,107 @@ ggsave("Industry_returns.pdf")
 aggregate(data$avg200809 ~ data$Industry, data=data, mean)
 
 # ----------------------------------------------------------------------------------------
-#Part (b)
+# Part (b) - Hierarchical clustering. "Ward D2"
+# The following code is referenced to the Rec7.R file provided in Recitation 7.
 # ----------------------------------------------------------------------------------------
 
+d <- dist(full_returns, method="euclidean")    # method = "euclidean"
+class(d)
+
+# Creates the Hierarchical clustering
+hclust.mod <- hclust(d, method="ward.D2")
+
+# Plot the hierarchy structure (dendrogram)
+pdf('dendrogram.pdf',8,5)
+plot(hclust.mod, labels=F, ylab="Dissimilarity", xlab = "", sub = "")
+dev.off()
+
+# To choose a good value for k, we need to create the scree plot: dissimilarity for each k
+# the next line puts this data in the right form to b?mixtoolse plotted
+hc.dissim <- data.frame(k = seq_along(hclust.mod$height),   # index: 1,2,...,length(hclust.mod$height)
+                        dissimilarity = rev(hclust.mod$height)) # reverse elements
+(hc.dissim)
+
+# Scree plot
+pdf('scree2.pdf',8,5)
+plot(hc.dissim$k, hc.dissim$dissimilarity, type="l")
+dev.off()
+# Let's zoom on the smallest k values:
+pdf('scree2_zoom.pdf',8,5)
+plot(hc.dissim$k, hc.dissim$dissimilarity, type="l", xlim=c(0,40))
+axis(side = 1, at = 1:10)
+dev.off()
+
+# ----------------------------------------------------------------------------------------
+# Part c.
+# ----------------------------------------------------------------------------------------
+
+# Improvement in dissimilarity for increasing number of clusters
+hc.dissim.dif = head(hc.dissim,-1)-tail(hc.dissim,-1)  # all but the last of hc.dissim - all but the first, basically a shifted difference
+head(hc.dissim.dif,10)
+
+# now that we have k (we chose k=7 in the lecture), we can construct the clusters
+h.clusters <- cutree(hclust.mod, 8)
+h.clusters
+
+# The *centroid* for a cluster is the mean value of all points in the cluster: 
+aggregate(full_returns, by=list(h.clusters), mean) # Compute centroids
+
+# Number of companies in each cluster
+table(h.clusters)
+
+# Number of companies per industry in each cluster
+table(data$Industry, h.clusters)
+
+# Average returns by cluster for Oct 2008
+aggregate(full_returns$avg200810, by=list(h.clusters), mean) 
+# Average returns by cluster for March 2009
+aggregate(full_returns$avg200903, by=list(h.clusters), mean) 
+
+# ----------------------------------------------------------------------------------------
+# Part d.
+# ----------------------------------------------------------------------------------------
+
+#Start here. 
+set.seed()
+
+# The kmeans function creates the clusters
+# we can set an upper bound to the number of iterations
+# of the algorithm 
+# here we set k=7
+km_returns <- kmeans(full_returns, centers = 7, iter.max=100) # centers randomly selected from rows of airline.scaled
+
+class(km_returns) # class: kmeans
+names(km_returns) # Take a look at what's inside this object.
+# Let's explore the results!
+# cluster centroids. Store this result
+km_returns.centroids <- km_returns$centers
+km_returns.centroids
+# cluster for each point. Store the assignment of each point to its corresponding cluster.
+km_returns.clusters <- km_returns$cluster
+km_returns.clusters
+# the sum of the squared distances of each observation from its cluster centroid.
+# we use it the measure cluster dissimilarity
+km_returns$tot.withinss  # cluster dissimilarity
+# the number of observations in each cluster -- table(km$cluster) also works. Store this resul
+km_returns.size <- km_returns$size
+km_returns.size
+
+# Scree plot for k-means
+# For k means, we literally try many value of k and look at their dissimilarity.
+# here we test all k from 1 to 100
+k_ret.data <- data.frame(k_ret = 1:100)
+k_ret.data$SS <- sapply(k_ret.data$k_ret, function(k_ret) {
+  kmeans(full_returns, iter.max=100, k_ret)$tot.withinss
+})
+
+# Plot the scree plot.
+pdf('myplot.pdf',8,5)
+plot(k_ret.data$k_ret, k_ret.data$SS, type="l")
+dev.off()
+
+# Compare the clusters from kmeans and Hierarchical. Do some clusters "match up"? (Yes, because there are alot of zeros.)
+table(h.clusters, km.clusters)
 
 # ----------------------------------------------------------------------------------------
 ##### Problem 2: eBay.com

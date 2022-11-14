@@ -95,13 +95,13 @@ aggregate(full_returns$avg200903, by=list(h.clusters), mean)
 # ----------------------------------------------------------------------------------------
 
 #Start here. 
-set.seed()
+set.seed(2407)
 
 # The kmeans function creates the clusters
 # we can set an upper bound to the number of iterations
 # of the algorithm 
 # here we set k=7
-km_returns <- kmeans(full_returns, centers = 7, iter.max=100) # centers randomly selected from rows of airline.scaled
+km_returns <- kmeans(full_returns, centers = 8, iter.max=100) # centers randomly selected from rows of airline.scaled
 
 class(km_returns) # class: kmeans
 names(km_returns) # Take a look at what's inside this object.
@@ -119,6 +119,11 @@ km_returns$tot.withinss  # cluster dissimilarity
 km_returns.size <- km_returns$size
 km_returns.size
 
+# Average returns by cluster for Oct 2008
+aggregate(full_returns$avg200810, by=list(km_returns.clusters), mean) 
+# Average returns by cluster for March 2009
+aggregate(full_returns$avg200903, by=list(km_returns.clusters), mean) 
+
 # Scree plot for k-means
 # For k means, we literally try many value of k and look at their dissimilarity.
 # here we test all k from 1 to 100
@@ -128,12 +133,30 @@ k_ret.data$SS <- sapply(k_ret.data$k_ret, function(k_ret) {
 })
 
 # Plot the scree plot.
-pdf('myplot.pdf',8,5)
+pdf('kmeans.pdf',8,5)
 plot(k_ret.data$k_ret, k_ret.data$SS, type="l")
 dev.off()
 
 # Compare the clusters from kmeans and Hierarchical. Do some clusters "match up"? (Yes, because there are alot of zeros.)
-table(h.clusters, km.clusters)
+table(h.clusters, km_returns.clusters)
+
+# ----------------------------------------------------------------------------------------
+# Part e.
+# ----------------------------------------------------------------------------------------
+# Clustering
+library(cluster) 
+
+?silhouette
+k_means_ss = silhouette(km_returns.clusters,dist(full_returns))
+mean(k_means_ss[, 3])
+aggregate(k_means_ss, by=list(km_returns.clusters), mean) 
+
+hier_ss = silhouette(h.clusters,dist(full_returns))
+aggregate(hier_ss, by=list(h.clusters), mean) 
+mean(hier_ss[, 3])
+
+plot(k_means_ss, col=1:8, border=NA)
+plot(hier_ss, col=1:8, border=NA)
 
 # ----------------------------------------------------------------------------------------
 ##### Problem 2: eBay.com
@@ -189,32 +212,12 @@ importanceplot(adaboost, cex.names=0.7)
 pred_train <- predict(adaboost, newdata=ebay.train, type="Competitive.")
 pred_train
 pred_train$confusion
-#confusion.matrix = table(ebay.train$Competitive., pred_train)
-#confusion.matrix
-# TN | FN
-# FP | TP
-#NEED TO FIX THIS BELOW CONDITION.
-#TPR <- pred_train$confusion[2,2]/sum(pred_train$confusion[2,])
-#TPR
-#FPR <- pred_train$confusion[1,2]/sum(pred_train$confusion[1,])
-#FPR
-
-# training
-# confusionMatrix(, )
-# validation
-# confusionMatrix(, )
 
 # validation
 pred_test <- predict(adaboost, newdata=ebay.test, type="class")
 pred_test
 pred_test$confusion
 1-pred_test$error
-# confusion.matrix = table(ebay.train$Competitive., pred_train)
-# confusion.matrix
-#TPR <- pred_test$confusion[2,2]/sum(pred_test$confusion[2,])
-#TPR
-#FPR <- pred_test$confusion[1,2]/sum(pred_test$confusion[1,])
-#FPR
 
 ## xgboost
 library(xgboost)
@@ -330,6 +333,7 @@ confusionMatrix(ebay.test$competitive.factor, rf_pred_test)
 
 
 ### (c)
+
 ## adaboost
 adaboost <- boosting(competitive.factor~sellerRating+currency.factor+duration.factor+
                        endDay.factor+category.factor+ClosePrice, data = ebay.train)
@@ -348,17 +352,24 @@ ada_pred_test$confusion
 
 ## xgboost
 xgb <- xgboost(data = model.matrix(Competitive.~sellerRating+currency.factor+duration.factor+
-                                     endDay.factor+category.factor+ClosePrice,
-                                   subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.))), label = ebay.train$Competitive., max.depth = 20, eta = 1, nthread = 2, nrounds = 50, objective = "binary:logistic", verbose = 0)
+                      endDay.factor+category.factor+ClosePrice,
+                      subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.))), 
+                      label = ebay.train$Competitive., max.depth = 20, eta = 1, nthread = 2, nrounds = 50, 
+                      objective = "binary:logistic", verbose = 0)
 # variable importance
 xgb.importance(colnames(model.matrix(Competitive.~ sellerRating+currency.factor+duration.factor+
-                                       endDay.factor+category.factor+ClosePrice, subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.)))), model = xgb)
+                      endDay.factor+category.factor+ClosePrice, subset(ebay.train, 
+                      select=-c(competitive.factor, ebay.train$Competitive.)))), model = xgb)
 # training
-confusionMatrix(factor(1*(predict(xgb, model.matrix(Competitive.~sellerRating+currency.factor+duration.factor+
-                                                      endDay.factor+category.factor+ClosePrice, subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.))))>sum(ebay.df$Competitive.==1)/nrow(ebay.df))), ebay.train$competitive.factor)
+confusionMatrix(factor(1*(predict(xgb, model.matrix(Competitive.~sellerRating+currency.factor+ 
+                      duration.factor+endDay.factor+category.factor+ClosePrice, 
+                      subset(ebay.train, select=-c(competitive.factor, ebay.train$Competitive.)))) > 
+                      sum(ebay.df$Competitive.==1)/nrow(ebay.df))), ebay.train$competitive.factor)
 # validation
-confusionMatrix(factor(1*(predict(xgb, model.matrix(Competitive.~sellerRating+currency.factor+duration.factor+
-                                                      endDay.factor+category.factor+ClosePrice, subset(ebay.test, select=-c(competitive.factor, ebay.train$Competitive.))))>sum(ebay.df$Competitive.==1)/nrow(ebay.df))), ebay.test$competitive.factor)
+confusionMatrix(factor(1*(predict(xgb, model.matrix(Competitive.~sellerRating+currency.factor+
+                      duration.factor+endDay.factor+category.factor+ClosePrice, subset(ebay.test, 
+                      select=-c(competitive.factor, ebay.train$Competitive.)))) > 
+                      sum(ebay.df$Competitive.==1)/nrow(ebay.df))), ebay.test$competitive.factor)
 
 ## bagging
 bag <- bagging(competitive.factor~sellerRating+currency.factor+duration.factor+
@@ -385,6 +396,7 @@ confusionMatrix(ebay.train$competitive.factor, rf_pred_train)
 # validation
 rf_pred_test <- predict(rf, newdata=ebay.test, type="class")
 confusionMatrix(ebay.test$competitive.factor, rf_pred_test)
+
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------

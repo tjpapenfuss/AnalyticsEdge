@@ -11,22 +11,117 @@ rm(list = ls())
 ##### Problem 1: Predicting AirBnB review scores
 
 # data importation
-reviews.small = read.csv("airbnb-small.csv", stringsAsFactors = FALSE)
+reviews = read.csv("airbnb-small.csv", stringsAsFactors = FALSE)
 
 ### Question a.
 
+table(reviews$review_scores_rating)
+
+reviews %>%
+  group_by(review_scores_rating) %>%
+  summarize(cases = n()) %>%
+  ggplot(aes(review_scores_rating, cases)) + geom_col() +
+  theme_minimal() + scale_x_continuous(breaks = 0:5) 
+
+reviews$comment_len = nchar(reviews$comments)
+str(reviews)
+summary(reviews)
 
 ### Question b.
+corpus = Corpus(VectorSource(reviews$comments)) # An array of document
+corpus
+
+corpus[[1]]   # individual doc
+strwrap(corpus[[1]])
+strwrap(corpus[[3]])
+# Let us start processing the text in the corpus! Here is a 
+# summary of how we shall process the text.  
+# 1. Change all the text to lower case.  
+# 2. Remove all punctuation.
+# 3. Remove stop words 
+# 4. Remove the word "airbnb"
+# 5. "Stem" the documents. 
+
+# 1. Let's change all the text to lower case. 
+corpus = tm_map(corpus, tolower)
+strwrap(corpus[[1]])
+
+# 2. We remove punctuation from the document
+corpus <- tm_map(corpus, removePunctuation)
+strwrap(corpus[[1]])
+
+# 3. Let us remove some words. First, we remove stop words:  
+corpus = tm_map(corpus, removeWords, stopwords("english"))  # removeWords(corpus,stopwords("english"))
+# stopwords("english") is a dataframe that constains a list of 
+# stop words. Let us look at the first ten stop words. 
+stopwords("english")[1:10]
+
+# Checking again:  
+strwrap(corpus[[1]])
+
+# 4. Next, we remove the word "airbnb"
+strwrap(corpus[[4]])
+corpus = tm_map(corpus, removeWords, c("airbnb"))
+strwrap(corpus[[4]])
+
+# 5. Now we stem our documents. Recall that this corresponds to removing the parts of words
+# that are in some sense not necessary (e.g. 'ing' and 'ed'). 
+corpus = tm_map(corpus, stemDocument)
+
+# We have: 
+strwrap(corpus[[1]])
 
 ### Question c.
 
-
+# Let us "sparsify" the corpus and remove infrequent words. 
+# First, we calculate the frequency of each words over all tweets. 
+frequencies = DocumentTermMatrix(corpus)
+frequencies                              # documents as the rows, terms as the columns
+# Let us get a feel for what words occur the most. Words that appear at least 900 times: 
+findFreqTerms(frequencies, lowfreq=900)
+# Let us only keep terms that appear in at least 1% of the tweets. We create a list of these words as follows. 
+sparse = removeSparseTerms(frequencies, 0.99)  # 0.99: maximal allowed sparsity 
+sparse # We now have 172 terms instead of 12,093
 
 ### Question d.
+document_terms = as.data.frame(as.matrix(sparse))
+str(document_terms)
+head(document_terms)
+# Lastly, we create a new column for the dependent variable: 
+document_terms$positive_review = reviews$review_scores_rating >= 80
 
+# Training and test set.
+split1 = (reviews$date < "2018-01-01")
+split2 = (reviews$date >= "2018-01-01")
+train = document_terms[split1,]
+test = document_terms[split2,]
 
 ### Question e.
 
+# i. Constructing and plotting the CART model.
+cart = rpart(positive_review ~ ., data=train, method="class", cp = .003)  # classification
+prp(cart)
+
+# reviews[grepl("stay", reviews$comments), "comments"]
+
+
+# ii. Assessing the out-of-sample performance of the CART model
+predictions.cart <- predict(cart, newdata=test, type="class")
+matrix.cart = table(test$positive_review, predictions.cart) # confusion matrix
+accuracy.cart = (matrix.cart[1,1]+matrix.cart[2,2])/nrow(test)
+TPR.cart = (matrix.cart[2,2])/sum(matrix.cart[2,])
+FPR.cart = (matrix.cart[1,2])/sum(matrix.cart[1,])
+accuracy.cart
+TPR.cart
+FPR.cart
+
+true.predict = predictions.cart
+levels(true.predict) = c("True", "True")
+
+matrix.true.cart = table(test$positive_review, true.predict)
+accuracy.true.cart = (matrix.true.cart[2,1])/nrow(test)
+FPR.true.cart = (matrix.cart[1,1])/sum(matrix.cart[1,])
+accuracy.true.cart
 
 
 # PROBLEM 2 - Songs

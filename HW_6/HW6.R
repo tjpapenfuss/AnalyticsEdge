@@ -123,9 +123,14 @@ accuracy.true.cart = (matrix.true.cart[2,1])/nrow(test)
 FPR.true.cart = (matrix.cart[1,1])/sum(matrix.cart[1,])
 accuracy.true.cart
 
-
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 # PROBLEM 2 - Songs
 ##### Problem 2: Recommending Songs to Music Listeners
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 
 # reading the function file
 source("functionsCF.R")
@@ -154,18 +159,61 @@ mat.scaled <- biScale(mat.train, maxit=1000, row.scale = FALSE, col.scale = FALS
 ### Question a.
 
 set.seed(123)
+out_eval = cf.evaluate.ranks(music.train, 1:10, prop.validate=0.05)
+ggplot(data = out_eval) +
+  geom_point(aes(rank, r2))
+  
 
 ### Question b.
 
 set.seed(15071)
+# We are now ready to apply our collaborative filtering algorithm.
+# This is done with the softImpute function, as follows:
+fit <- softImpute(mat.train, rank.max=4, lambda=0, maxit=1000)
 
 
+pred.insample <- impute(fit, music.train[, 1], music.train[, 2])
+pred.outsample <- impute(fit, music.test[, 1], music.test[, 2])
+
+R2.insample <- 1 - sum((pred.insample-music.train$rating)^2)/sum((mean(music.train$rating) - music.train$rating)^2)
+R2.outsample <- 1 - sum((pred.outsample-music.test$rating)^2)/sum((mean(music.train$rating) - music.test$rating)^2)
+R2.insample
+R2.outsample
+?impute
+outTable = fit$u
+Daisy = (fit$u)[1584,]
+
+hist(pred.insample)
+hist(pred.outsample)
+
+# complete(mat.train,fit)
+# impute(music.train,fit)
 ### Question c.
 
-
+sum(fit$u[music.train[1584,1],] * fit$v[131,] * fit$d)
+sum(fit$u[music.train[1584,1],] * fit$v[156,] * fit$d)
 
 ### Question d.
+daisy_rated = music[which(music$userID ==1584),2]
+daisy_full = music[which(music$userID ==1584),]
 
+daisy_df = data.frame("songID"=c(0), "Estimated_Rating"=c(0))
+for (x in 1:807) {
+  if (!(x %in% daisy_rated)) {
+    pred.Daisy = sum(fit$u[music.train[1584,1],] * fit$v[x,] * fit$d)
+    daisy_df[x,] = c(x,pred.Daisy)    
+  }
+}
+sort(daisy_df$Estimated_Rating)
+top_n(daisy_df,5)
+
+sort(daisy_rated)
+top_n(daisy_full,5)
+
+daisy_final_rated = merge(top_n(daisy_full,5), songs, by=c("songID"))
+daisy_final_recommend = merge(top_n(daisy_df,5), songs, by=c("songID"))
+write.csv(daisy_final_rated, "finalrated.csv")
+write.csv(daisy_final_recommend, "daisyRecommended.csv")
 
 # STEPS
 # - Make predictions for all songs Daisy has not rated. ------> 
